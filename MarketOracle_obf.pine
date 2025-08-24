@@ -1,0 +1,87 @@
+//@version=6
+// ============================================================================
+//   Script:   c0da Market Oracle indicator
+//   Author:   c0da [ https://t.me/andrey_lifar ]
+//   License:  Personal use only / Do not redistribute
+// ============================================================================
+//   Индикатор основан на курсах по трейдингу от Professor Pumpkin :
+//   https://t.me/+84jzVspaab4yYzE6
+// ============================================================================
+
+indicator(title = 'c0da Market Oracle indicator', shorttitle = 'c0da Market Oracle indicator', overlay = false, precision = 2)
+import TradingView/ta/8
+
+a=30
+b=70
+c=input.string("Цена закрытия",title="Данные",options=["Цена закрытия","Цена открытия","Максимум","Минимум"],group="Oscillator")
+d=switch c
+    "Цена открытия"=>open
+    "Максимум"=>high
+    "Минимум"=>low
+    "Цена закрытия"=>close
+e=input.int(14,minval=1,title='Length',group='Параметры RSI')
+f=input.color(color.rgb(43,74,158),title='Цвет линии RSI',group='Параметры RSI')
+g=input.int(5,minval=2,maxval=12,title='Точек справа',group='Дивергенция / конвергенция')
+h=input.int(5,minval=2,maxval=12,title='Точек слева',group='Дивергенция / конвергенция')
+i=input.int(60,minval=1,title='Макс. расст. между экстремумами',group='Дивергенция / конвергенция')
+j=input.int(5,minval=1,title='Мин. расст. между экстремумами',group='Дивергенция / конвергенция')
+k=input.bool(true,title="Показывать дельту объёма",group="Дельта объема")
+l=input.float(1.0,minval=0.1,maxval=5,step=0.1,title='Масштаб',group="Дельта объема")
+m=input.bool(false,title="Использовать меньший таймфрейм",group="Дельта объема")
+n=input.timeframe("1",title="Таймфрейм",active=m,group="Дельта объема")
+o=input.int(50,title="Прозрачность",minval=0,maxval=100,step=5,group="Дельта объема")
+
+p=ta.rsi(d,e)
+q(x)=>r=ta.barssince(x==true),j<=r and r<=i
+s=not na(ta.pivotlow(p,g,h))
+t=not na(ta.pivothigh(p,g,h))
+u=q(s[1])
+v=q(t[1])
+w=p[h]>ta.valuewhen(s,p[h],1) and u
+x=p[h]<ta.valuewhen(t,p[h],1) and v
+y=low[h]<ta.valuewhen(s,low[h],1)
+z=high[h]>ta.valuewhen(t,high[h],1)
+aa=ta.valuewhen(s,p[h],1)
+ab=ta.valuewhen(t,p[h],1)
+ac=y and w and s and (aa<a)
+ad=z and x and t and (ab>b)
+
+ae=hline(b,color=color.new(#787B86,50),editable=false)
+af=hline(a,color=color.new(#787B86,50),editable=false)
+fill(ae,af,color=color.rgb(126,87,194,90),title='Background Fill')
+ag=plot(p,title='RSI',linewidth=2,color=f)
+plot(s?p[h]:na,offset=-h,linewidth=2,color=ac?color.green:na,display=display.pane,title="Конвергенция")
+plot(t?p[h]:na,offset=-h,linewidth=2,color=ad?color.red:na,display=display.pane,title="Дивергенция")
+
+ah=p<a?p:a
+ai=plot(ah,color=na,display=display.none,editable=false)
+aj=plot(a,color=na,editable=false,display=display.none)
+fill(ai,aj,color=color.red)
+
+ak=p>b?p:b
+al=plot(ak,color=na,display=display.none,editable=false)
+am=plot(b,color=na,editable=false,display=display.none)
+fill(al,am,color=color.green)
+
+var string an=switch
+    m=>n
+    timeframe.isseconds=>"1S"
+    timeframe.isintraday=>"1"
+    timeframe.isdaily=>"5"
+    =>"60"
+
+[ao,ap,aq,ar]=ta.requestVolumeDelta(an)
+var float ss=na
+var float at=na
+ss:=na(ss)?ar:math.min(ss,ar)
+at:=na(at)?ar:math.max(at,ar)
+au=math.max(math.abs(ss),math.abs(at))
+av(vx,mx)=>50.0+(vx/mx)*(20.0*l)
+aw=av(ao,au)
+ax=av(ap,au)
+ay=av(aq,au)
+az=av(ar,au)
+ba=color.new(color.teal,o)
+bb=color.new(color.red,o)
+bc=k?(ar>=0?ba:bb):na
+plotcandle(aw,ax,ay,az,title="Volume Delta",color=bc,bordercolor=bc,wickcolor=bc)
